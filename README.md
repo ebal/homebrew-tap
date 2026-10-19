@@ -56,9 +56,6 @@ or XQuartz. Some things work differently than on Linux:
 
 - Start it from a terminal: Homebrew installs a command, not an app in
   `/Applications`, so it is not in Launchpad or the Dock until it runs.
-- macOS has no `/proc`. Tab names do not follow the running command or
-  the current directory, a new tab opens in the start directory, and
-  there is no warning about running programs when a tab is closed.
 - Window transparency is off: GTK+ 3 on macOS would draw the title bar
   clear as well, so the window could not be moved. Set `use_rgba = 1` in
   `~/.config/lilyterm/default.conf` to turn it on anyway.

@@ -1,8 +1,8 @@
 class Lilyterm < Formula
   desc "Light and easy to use libvte based terminal emulator"
   homepage "https://github.com/ebal/LilyTerm"
-  url "https://github.com/ebal/LilyTerm/archive/refs/tags/v0.10.1.tar.gz"
-  sha256 "5769b9ceaea0eabefdfe3306e325bb19a72c39470163cef0aaa6bc0aaee231fc"
+  url "https://github.com/ebal/LilyTerm/archive/refs/tags/v0.11.0.tar.gz"
+  sha256 "eb640348b9ab54d35ee160a0b7604cda20b697a901c126f3ab7e8dba71c87a31"
   license "GPL-3.0-or-later"
   head "https://github.com/ebal/LilyTerm.git", branch: "main"
 
@@ -30,10 +30,6 @@ class Lilyterm < Formula
       LilyTerm runs with the native macOS (Quartz) backend of GTK+ 3.
       Start it from a terminal:
         lilyterm
-
-      macOS has no /proc, so tab names do not follow the running command
-      or the current directory, and there is no warning about running
-      programs when a tab is closed.
 
       Window transparency is off on macOS, because GTK+ 3 then draws the
       title bar clear as well. To turn it on anyway, set use_rgba = 1 in
