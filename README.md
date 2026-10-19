@@ -59,9 +59,8 @@ or XQuartz. Some things work differently than on Linux:
 - Key bindings use Ctrl, not Cmd. Change them with [Set key binding] in
   the right click menu.
 
-The release 0.9.10 gets a small patch from this formula, so it builds and
-runs safely on macOS. It goes away with the next LilyTerm release, which
-will have it.
+LilyTerm 0.10.0 and later build on macOS as they are: the formula has no
+patches.
 
 ## Testing the formula
 
