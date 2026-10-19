@@ -19,6 +19,12 @@ brew tap ebal/tap
 brew install lilyterm
 ```
 
+LilyTerm is also released as a ready-made app for Apple Silicon:
+`LilyTerm-VERSION-macos-arm64.dmg` on the
+[releases page](https://github.com/ebal/LilyTerm/releases), with GTK+ 3
+and VTE inside, no Homebrew needed. This formula is the other way: it
+installs the `lilyterm` command, built from source.
+
 This tap has no bottles (prebuilt packages), so Homebrew builds LilyTerm
 from source. Its dependencies (`gtk+3`, `vte3`, `glib`, `gettext`) come as
 bottles from Homebrew itself on macOS with Apple Silicon and on Linux. On an
