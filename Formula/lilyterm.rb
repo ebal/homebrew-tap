@@ -2,7 +2,7 @@ class Lilyterm < Formula
   desc "Light and easy to use libvte based terminal emulator"
   homepage "https://github.com/ebal/LilyTerm"
   license "GPL-3.0-or-later"
-  revision 2
+  revision 3
   head "https://github.com/ebal/LilyTerm.git", branch: "main"
 
   stable do
@@ -12,7 +12,8 @@ class Lilyterm < Formula
     # Build and run safely on macOS: a socket path that fits the 104 byte
     # sun_path, the peer uid check with getpeereid(), Apple's strip, theme
     # colors with a valid alpha (VTE refused the foreground color), the
-    # LilyTerm icon in the Dock, and menus with an opaque background.
+    # LilyTerm icon in the Dock, menus with an opaque background, and a
+    # visible title bar (no RGBA window unless use_rgba = 1).
     # Drop this once a release has it.
     patch :DATA
   end
@@ -45,6 +46,10 @@ class Lilyterm < Formula
       macOS has no /proc, so tab names do not follow the running command
       or the current directory, and there is no warning about running
       programs when a tab is closed.
+
+      Window transparency is off on macOS, because GTK+ 3 then draws the
+      title bar clear as well. To turn it on anyway, set use_rgba = 1 in
+      ~/.config/lilyterm/default.conf.
 
       The system wide settings are in:
         #{etc}/xdg/lilyterm.conf
@@ -137,6 +142,29 @@ index 6046cbe..6066da7 100644
  
  	return rgba;
  }
+diff --git a/src/profile.c b/src/profile.c
+index 186b330..d408f4e 100644
+--- a/src/profile.c
++++ b/src/profile.c
+@@ -2712,10 +2712,14 @@ void init_rgba(struct Window *win_data)
+ 
+ 	if (win_data->use_rgba==2)
+ 	{
+-		if (screen)
+-			win_data->use_rgba = gdk_screen_is_composited(screen);
+-		else
+-			goto FINISH;
++		if (screen==NULL) goto FINISH;
++#ifdef __APPLE__
++		// GTK+ 3 on macOS draws an RGBA window clear, its title bar included,
++		// so there is nothing to see or to drag. Only on request (use_rgba = 1).
++		win_data->use_rgba = 0;
++#else
++		win_data->use_rgba = gdk_screen_is_composited(screen);
++#endif
+ 	}
+ 
+ 	if (win_data->use_rgba)
 diff --git a/src/property.c b/src/property.c
 index 9748da9..d747ed1 100644
 --- a/src/property.c
