@@ -2,6 +2,7 @@ class Lilyterm < Formula
   desc "Light and easy to use libvte based terminal emulator"
   homepage "https://github.com/ebal/LilyTerm"
   license "GPL-3.0-or-later"
+  revision 1
   head "https://github.com/ebal/LilyTerm.git", branch: "main"
 
   stable do
@@ -9,7 +10,8 @@ class Lilyterm < Formula
     sha256 "4ef9759b23641681cef74d38ca2e4cd6a94aef640819849e6a3218498863273e"
 
     # Build and run safely on macOS: a socket path that fits the 104 byte
-    # sun_path, the peer uid check with getpeereid(), and Apple's strip.
+    # sun_path, the peer uid check with getpeereid(), Apple's strip, and
+    # theme colors with a valid alpha (VTE refused the foreground color).
     # Drop this once a release has it.
     patch :DATA
   end
@@ -84,6 +86,35 @@ index 3b7d1b1..d780904 100644
  
  gboolean set_fd_non_block(gint *fd);
  gboolean init_socket_server(GSourceFunc read_function);
+diff --git a/src/misc.c b/src/misc.c
+index 6046cbe..6066da7 100644
+--- a/src/misc.c
++++ b/src/misc.c
+@@ -689,6 +689,8 @@ GdkRGBA convert_color_to_rgba(GdkColor color)
+ 	rgba.red = (gdouble)(color.red>>8)/0xFF;
+ 	rgba.green = (gdouble)(color.green>>8)/0xFF;
+ 	rgba.blue = (gdouble)(color.blue>>8)/0xFF;
++	// VTE refuses a color with an alpha out of [0, 1]: never leave it uninitialized
++	rgba.alpha = 1.0;
+ 
+ 	return rgba;
+ }
+diff --git a/src/property.c b/src/property.c
+index 9748da9..d747ed1 100644
+--- a/src/property.c
++++ b/src/property.c
+@@ -73,6 +73,11 @@ void adjust_ansi_color(GdkRGBA *color, GdkRGBA *color_orig, gdouble color_bright
+ 		color->green = (1 + color_brightness) * color_orig->green;
+ 		color->blue = (1 + color_brightness) * color_orig->blue;
+ 	}
++	// VTE refuses a color with any component out of [0, 1]
++	color->red = CLAMP(color->red, 0, 1);
++	color->green = CLAMP(color->green, 0, 1);
++	color->blue = CLAMP(color->blue, 0, 1);
++	color->alpha = 1.0;
+ }
+ 
+ void generate_all_color_datas(struct Window *win_data)
 diff --git a/src/socket.c b/src/socket.c
 index 2094d75..96e1097 100644
 --- a/src/socket.c
