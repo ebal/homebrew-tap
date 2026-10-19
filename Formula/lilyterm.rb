@@ -2,7 +2,7 @@ class Lilyterm < Formula
   desc "Light and easy to use libvte based terminal emulator"
   homepage "https://github.com/ebal/LilyTerm"
   license "GPL-3.0-or-later"
-  revision 1
+  revision 2
   head "https://github.com/ebal/LilyTerm.git", branch: "main"
 
   stable do
@@ -10,8 +10,9 @@ class Lilyterm < Formula
     sha256 "4ef9759b23641681cef74d38ca2e4cd6a94aef640819849e6a3218498863273e"
 
     # Build and run safely on macOS: a socket path that fits the 104 byte
-    # sun_path, the peer uid check with getpeereid(), Apple's strip, and
-    # theme colors with a valid alpha (VTE refused the foreground color).
+    # sun_path, the peer uid check with getpeereid(), Apple's strip, theme
+    # colors with a valid alpha (VTE refused the foreground color), the
+    # LilyTerm icon in the Dock, and menus with an opaque background.
     # Drop this once a release has it.
     patch :DATA
   end
@@ -57,10 +58,21 @@ end
 
 __END__
 diff --git a/src/Makefile b/src/Makefile
-index 154bbd4..13332a1 100644
+index 154bbd4..51a8129 100644
 --- a/src/Makefile
 +++ b/src/Makefile
-@@ -82,8 +82,12 @@ endif
+@@ -72,6 +72,10 @@ INCLUDES = -DBINARY=\"$(BINARY)\" \
+ ifeq ($(BSD), 1)
+ 	INCLUDES += -DBSD
+ endif
++ifeq ($(shell uname), Darwin)
++	# objc_msgSend() for the Dock icon, see init_macos()
++	LIBS += -lobjc
++endif
+ ifeq ($(VERBOSITY), Y)
+ 	VERBOSITY_OUTPUT =
+ else
+@@ -82,8 +86,12 @@ endif
  all: default
  ifeq ($(DEBUG), N)
  	@ $(PRINTF) "\033[1;36m** striping \033[1;32m$(BINARY)\033[1;36m ...\033[0m\n"
@@ -73,6 +85,32 @@ index 154bbd4..13332a1 100644
  
  .PHONY: default
  ifneq ($(SAFEMODE), N)
+diff --git a/src/lilyterm.h b/src/lilyterm.h
+index b53cfb4..d76d5dd 100644
+--- a/src/lilyterm.h
++++ b/src/lilyterm.h
+@@ -123,6 +123,7 @@ gboolean idle_set_vte_font_to_selected(struct Window *win_data);
+ void dim_window(struct Window *win_data, gint dim_window);
+ void clear_window(struct Window *win_data);
+ void set_window_icon(GtkWidget *window);
++void init_macos(void);
+ gboolean window_quit(GtkWidget *window, GdkEvent *event, struct Window *win_data);
+ GString *close_multi_tabs(struct Window *win_data, int window_no);
+ gboolean display_child_process_dialog (GString *child_process_list, struct Window *win_data, gsize style);
+diff --git a/src/main.c b/src/main.c
+index b81a27c..d649f9a 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -137,6 +137,9 @@ int main( int   argc,
+ 	// Convert the GdkColor to GdkRGBA
+ 	convert_system_color_to_rgba();
+ 
++	// the Dock icon and the menu background on macOS
++	init_macos();
++
+ 	//GtkNotebook *new_window(int argc,
+ 	//			char *argv[],
+ 	//			gchar *shell,
 diff --git a/src/main.h b/src/main.h
 index 3b7d1b1..d780904 100644
 --- a/src/main.h
@@ -174,3 +212,66 @@ index 2094d75..96e1097 100644
  
  		if ( ! set_fd_non_block(&read_fd)) return FALSE;
  
+diff --git a/src/window.c b/src/window.c
+index 53ba322..f25cb0e 100644
+--- a/src/window.c
++++ b/src/window.c
+@@ -18,6 +18,10 @@
+  */
+ 
+ #include "window.h"
++#ifdef __APPLE__
++#  include <objc/runtime.h>
++#  include <objc/message.h>
++#endif
+ 
+ extern gboolean proc_exist;
+ 
+@@ -451,6 +455,47 @@ void set_window_icon(GtkWidget *window)
+ 		gtk_window_set_icon_name(GTK_WINDOW(window), BINARY);
+ }
+ 
++// GTK+ 3 on macOS ignores the window icon for the Dock, and draws the
++// menus without a background. Set the application icon through AppKit,
++// and give the menus the background color of the theme.
++void init_macos(void)
++{
++#ifdef __APPLE__
++#ifdef DETAIL
++	g_debug("! Launch init_macos()");
++#endif
++	Class app_class = objc_getClass("NSApplication");
++	Class image_class = objc_getClass("NSImage");
++	Class string_class = objc_getClass("NSString");
++	if (app_class && image_class && string_class && g_file_test(ICON_PATH, G_FILE_TEST_IS_REGULAR))
++	{
++		id path = ((id (*)(Class, SEL, const char *))objc_msgSend)
++				(string_class, sel_registerName("stringWithUTF8String:"), ICON_PATH);
++		id image = ((id (*)(Class, SEL))objc_msgSend)(image_class, sel_registerName("alloc"));
++		image = ((id (*)(id, SEL, id))objc_msgSend)(image, sel_registerName("initWithContentsOfFile:"), path);
++		if (image)
++		{
++			id app = ((id (*)(Class, SEL))objc_msgSend)(app_class, sel_registerName("sharedApplication"));
++			((void (*)(id, SEL, id))objc_msgSend)(app, sel_registerName("setApplicationIconImage:"), image);
++			((void (*)(id, SEL))objc_msgSend)(image, sel_registerName("release"));
++		}
++	}
++
++	GdkScreen *screen = gdk_screen_get_default();
++	if (screen)
++	{
++		GtkCssProvider *css = gtk_css_provider_new();
++		if (gtk_css_provider_load_from_data(css,
++						    "menu, .menu, .context-menu { background-color: @theme_bg_color; }\n"
++						    "window.popup { background-color: @theme_bg_color; }\n",
++						    -1, NULL))
++			gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css),
++								  GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
++		g_object_unref(css);
++	}
++#endif
++}
++
+ gboolean window_quit(GtkWidget *window, GdkEvent *event, struct Window *win_data)
+ {
+ #ifdef DETAIL
