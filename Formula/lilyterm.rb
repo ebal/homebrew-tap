@@ -1,8 +1,8 @@
 class Lilyterm < Formula
   desc "Light and easy to use libvte based terminal emulator"
   homepage "https://github.com/ebal/LilyTerm"
-  url "https://github.com/ebal/LilyTerm/archive/refs/tags/v0.14.5.tar.gz"
-  sha256 "1ef3bff97565a3f474f518a413c92def3f5932b40334c633b4958c5838716a70"
+  url "https://github.com/ebal/LilyTerm/archive/refs/tags/v0.15.0.tar.gz"
+  sha256 "d1f038d4f051ef3af55ac82de839ce38d002bcf918251372a2f0768eed21ea22"
   license "GPL-3.0-or-later"
   head "https://github.com/ebal/LilyTerm.git", branch: "main"
 
